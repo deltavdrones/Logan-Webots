@@ -174,7 +174,7 @@ PROTO Logan2026_v6 [
               Box {
                 size 0.25 0.03 0.01
               }
-            }
+            ]
           }
           translationStep 0.0001
         }
@@ -184,13 +184,8 @@ PROTO Logan2026_v6 [
       DEF M1 Propeller {
         shaftAxis 0 0 1
         centerOfThrust 0.173 -0.173 0.0325
-<<<<<<< Updated upstream
-        thrustConstants 0.00001473 -0.0004723
-        torqueConstants 0.0000002030 0.000002559
-=======
         thrustConstants 0.0009544 0
         torqueConstants 0.000909 0
->>>>>>> Stashed changes
         fastHelixThreshold 50
         device RotationalMotor {
           name "motor1"
