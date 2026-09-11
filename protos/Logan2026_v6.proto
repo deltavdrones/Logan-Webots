@@ -17,8 +17,22 @@ PROTO Logan2026_v6 [
   ]
   field SFString   controller       "ardupilot_vehicle_controller"
   field MFString   controllerArgs   [
+    
     "--motors"
     "motor1, motor2, motor3, motor4"
+    "--reversed-motors"
+    "3,4"
+    "--motor-cap"
+    "100"
+    "--servos"
+    "camera_tilt"
+    "--camera"
+    "camera"
+    "--camera-fps"
+    "10"
+    "--camera-port"
+    "8554"
+  
   ]
 ]
 {
@@ -116,7 +130,7 @@ PROTO Logan2026_v6 [
         shaftAxis 0 0 1
         centerOfThrust -0.173 -0.173 0.0325
         thrustConstants -0.0009544 0
-        torqueConstants 0.000909 0
+          torqueConstants 0.000909 0
         fastHelixThreshold 50
         device RotationalMotor {
           name "motor4"
@@ -327,23 +341,31 @@ PROTO Logan2026_v6 [
           9.80665 9.80665 0.000675,
           156.9064 156.9064 0.0000422
         ]
-        resolution 0.0047884
+        #resolution 0
       }
       Gyro {
         lookupTable [
           0 0 0.001,
           34.9066 34.9066 0.000014
         ]
-        resolution 0.001065
+        #resolution 0
       }
       InertialUnit {
         noise 0.0025
-        resolution 0.0001
+        #resolution 0.0001
       }
       GPS {
         accuracy 1.5
         noiseCorrelation 0.9
         speedNoise 0.05
+      }
+      Compass {
+        name "compass"
+        #lookupTable [
+         # -1 -1 0.005,
+          #1 1 0.005
+       # ]
+        #resolution 0
       }
 
       
@@ -408,9 +430,9 @@ PROTO Logan2026_v6 [
     # -----------------------------------------------------------------
     physics Physics {
       density -1
-      mass 2.392
+      mass 2.810
       centerOfMass [
-        0 0 0
+          0 0 0
       ]
     }
   }
