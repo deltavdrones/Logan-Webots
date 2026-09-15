@@ -118,6 +118,14 @@ class WebotsArduVehicle():
         self.gyro.enable(self._timestep)
         self.gps.enable(self._timestep)
 
+        # pega dados da telemetria
+        self.telemetry = {
+            'time': [],
+            'accel_x': [], 'accel_y': [], 'accel_z': [],
+            'roll': [], 'pitch': [], 'yaw': [],
+            'gps_x': [], 'gps_y': [], 'gps_z': []
+        }
+
         # init camera
         if camera_name is not None:
             self.camera = self.robot.getDevice(camera_name)
@@ -182,31 +190,40 @@ class WebotsArduVehicle():
         print(f"Connected to ardupilot SITL (I{self._instance})")
 
         # main loop handling communications
-        while True:
-            # check if the socket is ready to send/receive
-            readable, writable, _ = select.select([s], [s], [], 0)
+        last_packet_time = time.time()
+        timeout_seconds = 2.0  # Tempo sem pacotes antes de encerrar
 
-            # send data to SITL port (one lower than its output port as seen in SITL_cmdline.cpp)
+        while True:
+            # select com timeout de 0.1s para não travar o loop
+            readable, writable, _ = select.select([s], [s], [], 0.1)
+
             if writable:
                 fdm_struct = self._get_fdm_struct()
                 s.sendto(fdm_struct, (sitl_address, port+1))
 
-            # receive data from SITL port
             if readable:
                 data = s.recv(512)
                 if not data or len(data) < self.controls_struct_size:
                     continue
 
-                # parse a single struct
+                last_packet_time = time.time()  # Atualiza o timestamp do último pacote
                 command = struct.unpack(self.controls_struct_format, data[:self.controls_struct_size])
                 self._handle_controls(command)
 
-                # wait until the next Webots time step as no new sensor data will be available until then
+                # Avança a simulação física do Webots
                 step_success = self.robot.step(self._timestep)
-                if step_success == -1: # webots closed
+                if step_success == -1:
                     break
 
-        # if we leave the main loop then Webots must have closed
+                # Registra telemetria
+                self._record_telemetry()
+
+            # SE FICAR SEM RECEBER PACOTES DO ARDUPILOT:
+            if time.time() - last_packet_time > timeout_seconds:
+                print(f"\nWarning: ArduPilot desconectado. Finalizando...")
+                break
+
+        # if we leave the main loop then Webots must have closed or SITL timed out
         s.close()
         self._webots_connected = False
         print(f"Lost connection to Webots (I{self._instance})")
@@ -223,6 +240,7 @@ class WebotsArduVehicle():
         a = self.accel.getValues()
         gps_pos = self.gps.getValues()
         gps_vel = self.gps.getSpeedVector()
+        sim_time = self.robot.getTime()
 
         # pack the struct, converting ENU to NED (ish)
         # https://discuss.ardupilot.org/t/copter-x-y-z-which-is-which/6823/3
@@ -234,13 +252,31 @@ class WebotsArduVehicle():
         #     double velocity_xyz[3];
         #     double position_xyz[3];
         # };
+
         return struct.pack(self.fdm_struct_format,
-                           self.robot.getTime(),
+                           sim_time,
                            g[0], -g[1], -g[2],
                            a[0], -a[1], -a[2],
                            i[0], -i[1], -i[2],
                            gps_vel[0], -gps_vel[1], -gps_vel[2],
                            gps_pos[0], -gps_pos[1], -gps_pos[2])
+
+    def _record_telemetry(self):
+            sim_time = self.robot.getTime()
+            i = self.imu.getRollPitchYaw()
+            a = self.accel.getValues()
+            gps_pos = self.gps.getValues()
+
+            self.telemetry['time'].append(sim_time)
+            self.telemetry['roll'].append(i[0])
+            self.telemetry['pitch'].append(i[1])
+            self.telemetry['yaw'].append(i[2])
+            self.telemetry['accel_x'].append(a[0])
+            self.telemetry['accel_y'].append(a[1])
+            self.telemetry['accel_z'].append(a[2])
+            self.telemetry['gps_x'].append(gps_pos[0])
+            self.telemetry['gps_y'].append(gps_pos[1])
+            self.telemetry['gps_z'].append(gps_pos[2])
 
     def _handle_controls(self, command: tuple):
         """Set the motor speeds based on the SITL command

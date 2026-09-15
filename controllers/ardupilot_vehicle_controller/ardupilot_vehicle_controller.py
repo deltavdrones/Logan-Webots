@@ -6,9 +6,15 @@ AP_FLAKE8_CLEAN
 '''
 
 
+import webots_vehicle
+import os
+import csv
 import time
 import argparse
+import numpy as np
+import matplotlib.pyplot as plt
 from webots_vehicle import WebotsArduVehicle
+from datetime import datetime
 
 
 def get_args():
@@ -95,6 +101,101 @@ def get_args():
 
     return parser.parse_args()
 
+def save_telemetry_plots(data: dict):
+    if not data['time']:
+        print("Nenhum dado de telemetria registrado.")
+        return
+
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    output_dir = os.path.abspath(os.path.join(current_dir, "..", "..", "metricas", "plots"))
+    os.makedirs(output_dir, exist_ok=True)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    file_name = f"sensores_telemetria_{timestamp}.png"
+    save_path = os.path.join(output_dir, file_name)
+
+    t = np.array(data['time'])
+
+    fig, axes = plt.subplots(3, 1, figsize=(11, 10), sharex=True)
+    fig.suptitle(f'Telemetria dos Sensores ({timestamp})', fontsize=14, fontweight='bold')
+
+    # 1. Acelerômetro
+    axes[0].plot(t, data['accel_x'], label='Acc X ($m/s^2$)', color='crimson')
+    axes[0].plot(t, data['accel_y'], label='Acc Y ($m/s^2$)', color='forestgreen')
+    axes[0].plot(t, data['accel_z'], label='Acc Z ($m/s^2$)', color='royalblue')
+    axes[0].set_ylabel('Aceleração ($m/s^2$)')
+    axes[0].set_title('Acelerômetro')
+    axes[0].grid(True, linestyle='--', alpha=0.5)
+    axes[0].legend(loc='upper right')
+
+    # 2. IMU
+    axes[1].plot(t, np.degrees(data['roll']), label='Roll (°)', color='coral')
+    axes[1].plot(t, np.degrees(data['pitch']), label='Pitch (°)', color='teal')
+    axes[1].plot(t, np.degrees(data['yaw']), label='Yaw (°)', color='purple')
+    axes[1].set_ylabel('Ângulo (°)')
+    axes[1].set_title('IMU (Atitude)')
+    axes[1].grid(True, linestyle='--', alpha=0.5)
+    axes[1].legend(loc='upper right')
+
+    # 3. GPS
+    axes[2].plot(t, data['gps_x'], label='Pos X (m)', color='darkorange')
+    axes[2].plot(t, data['gps_y'], label='Pos Y (m)', color='navy')
+    axes[2].plot(t, data['gps_z'], label='Pos Z / Altura (m)', color='darkgreen')
+    axes[2].set_xlabel('Tempo de Simulação - robot.getTime() (s)')
+    axes[2].set_ylabel('Posição (m)')
+    axes[2].set_title('GPS (Posição Relativa)')
+    axes[2].grid(True, linestyle='--', alpha=0.5)
+    axes[2].legend(loc='upper right')
+
+    plt.tight_layout()
+
+    plt.savefig(save_path, dpi=300)
+    plt.close(fig)
+
+def save_telemetry_csv(data: dict):
+    if not data['time']:
+        print("Nenhum dado de telemetria para salvar no CSV.")
+        return
+
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    output_dir = os.path.abspath(os.path.join(current_dir, "..", "..", "metricas", "csv"))
+    os.makedirs(output_dir, exist_ok=True)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    csv_path = os.path.join(output_dir, f"sensores_telemetria_{timestamp}.csv")
+
+    fieldnames = [
+        'time',
+        'accel_x', 'accel_y', 'accel_z',
+        'roll_deg', 'pitch_deg', 'yaw_deg',
+        'gps_x', 'gps_y', 'gps_z'
+    ]
+
+    # conversao angulo --> graus
+    roll_deg = np.degrees(data['roll'])
+    pitch_deg = np.degrees(data['pitch'])
+    yaw_deg = np.degrees(data['yaw'])
+
+    num_samples = len(data['time'])
+
+    with open(csv_path, mode='w', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+
+        for i in range(num_samples):
+            writer.writerow({
+                'time': data['time'][i],
+                'accel_x': data['accel_x'][i],
+                'accel_y': data['accel_y'][i],
+                'accel_z': data['accel_z'][i],
+                'roll_deg': roll_deg[i],
+                'pitch_deg': pitch_deg[i],
+                'yaw_deg': yaw_deg[i],
+                'gps_x': data['gps_x'][i],
+                'gps_y': data['gps_y'][i],
+                'gps_z': data['gps_z'][i],
+            })
+
 
 if __name__ == "__main__":
     args = get_args()
@@ -129,5 +230,12 @@ if __name__ == "__main__":
     # User code (ex: connect via drone kit and take off)
     # ...
 
-    while vehicle.webots_connected():
-        time.sleep(1)
+    try:
+        while vehicle.webots_connected():
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("\nInterrupção manual detectada. Gerando gráficos...")
+    finally:
+        timestamp_sessao = datetime.now().strftime('%Y%m%d_%H%M%S')
+        save_telemetry_csv(vehicle.telemetry)
+        save_telemetry_plots(vehicle.telemetry)
