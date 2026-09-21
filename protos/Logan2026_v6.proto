@@ -336,36 +336,36 @@ PROTO Logan2026_v6 [
       # SENSORES PADRÃO ARDUPILOT (Para uso imediato no SITL)
       # -----------------------------------------------------------------
       Accelerometer {
-        lookupTable [
-          0 0 0.001,
-          9.80665 9.80665 0.000675,
-          156.9064 156.9064 0.0000422
-        ]
-        #resolution 0
+        #lookupTable [
+         # 0 0 0.001,
+          #9.80665 9.80665 0.000675,
+          #156.9064 156.9064 0.0000422
+        #]
+        #resolution 0.00479
       }
       Gyro {
-        lookupTable [
-          0 0 0.001,
-          34.9066 34.9066 0.000014
-        ]
-        #resolution 0
+        #lookupTable [
+          #0 0 0.001,
+          #34.9066 34.9066 0.000014
+         # ]
+        #resolution 0.001065
       }
       InertialUnit {
-        noise 0.0025
-        #resolution 0.0001
+        #noise 0.0025
+        #resolution 0.000175
       }
       GPS {
-        accuracy 1.5
-        noiseCorrelation 0.9
-        speedNoise 0.05
+        #accuracy 1.5
+        #noiseCorrelation 0.9
+        #speedNoise 0.05
       }
       Compass {
-        name "compass"
+          name "compass"
         #lookupTable [
-         # -1 -1 0.005,
-          #1 1 0.005
-       # ]
-        #resolution 0
+          #-1 -1 0.005,
+          # 1 1 0.005
+        #]
+        #resolution 0.00003
       }
 
       
@@ -432,7 +432,7 @@ PROTO Logan2026_v6 [
       density -1
       mass 2.810
       centerOfMass [
-          0 0 0
+            -0.0000422 -0.0002957 -0.0292075
       ]
     }
   }
